@@ -2,6 +2,8 @@ import express from 'express';
 import ingestRouter from './ingest.js';
 import topProductsRouter from './pipelines/topProducts.js';
 import funnelRouter from './pipelines/funnel.js';
+import eventsRouter from './pipelines/events.js';
+import statsRouter from './pipelines/stats.js';
 import cors from 'cors';
 
 import config from './config.js';
@@ -55,6 +57,8 @@ app.get('/api/health', async (req, res) => {
 app.use('/api', ingestRouter);
 app.use('/api', topProductsRouter);
 app.use('/api', funnelRouter);
+app.use('/api', eventsRouter);
+app.use('/api', statsRouter);
 
 app.use((req, res) => {
   res.status(404).json({
