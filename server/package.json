@@ -8,8 +8,8 @@
     "dev": "nodemon src/index.js",
     "indexes": "node scripts/indexes.js",
     "seed": "node scripts/seed.js",
-    "test": "node --test tests/topProducts.test.js tests/funnel.test.js tests/events.test.js tests/stats.test.js",
-    "test:integration": "node --test tests/events.integration.test.js tests/stats.integration.test.js"
+    "test": "node --test tests/topProducts.test.js tests/funnel.test.js tests/events.test.js tests/stats.test.js tests/segments.test.js",
+    "test:integration": "node --test tests/events.integration.test.js tests/stats.integration.test.js tests/segments.integration.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

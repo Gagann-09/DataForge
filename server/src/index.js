@@ -4,6 +4,7 @@ import topProductsRouter from './pipelines/topProducts.js';
 import funnelRouter from './pipelines/funnel.js';
 import eventsRouter from './pipelines/events.js';
 import statsRouter from './pipelines/stats.js';
+import segmentsRouter from './pipelines/segments.js';
 import cors from 'cors';
 
 import config from './config.js';
@@ -59,6 +60,7 @@ app.use('/api', topProductsRouter);
 app.use('/api', funnelRouter);
 app.use('/api', eventsRouter);
 app.use('/api', statsRouter);
+app.use('/api', segmentsRouter);
 
 app.use((req, res) => {
   res.status(404).json({
