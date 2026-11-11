@@ -6,6 +6,7 @@
   "scripts": {
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "seed": "npm run seed --prefix server",
+    "simulate": "npm run simulate --prefix server",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "dev": "concurrently -n API,WEB -c gray,white \"npm:dev:server\" \"npm:dev:client\""

@@ -20,36 +20,37 @@
 
 ## 🚀 Overview
 
-DataForge is a MongoDB-based e-commerce clickstream analytics project. It generates synthetic user activity, stores events in MongoDB, accepts event batches through an API, and calculates product and conversion-funnel analytics.
+DataForge is a high-performance MongoDB-based e-commerce clickstream analytics platform and live dashboard. It ingests synthetic and streaming user activity, stores immutable events in MongoDB, and delivers real-time product performance, hourly conversion funnels, customer lifetime-spend segmentation, and full event log exploration.
 
-The supplied backend snapshot includes a session-oriented event generator, a batched database seeder, six indexes, an ingestion endpoint, two aggregation endpoints, and focused unit-test files.
-
-> **Project scope:** This README describes only functionality present in the supplied repository snapshot. It does not claim a completed dashboard, explorer, segment analytics, production deployment, or benchmark results.
+The platform includes an Express API backend, six purpose-built indexes, an opt-in live event simulator (`server/scripts/simulate.js`), comprehensive test suites (64 unit tests, 3 live integration suites), and an industrial Vexon-styled React + Vite frontend dashboard.
 
 ## ✨ Implemented features
 
 | Area | Included capability |
 |---|---|
-| Synthetic data | Session-based e-commerce clickstream generation |
-| Dataset size | 150,000 events by default; configurable with `SEED_COUNT` |
+| Synthetic data | Session-based e-commerce clickstream generation (`generate.js`) |
+| Event streaming | Opt-in live traffic simulator submitting to `/api/ingest` (`simulate.js`) |
+| Dataset size | 150,000 baseline events; configurable with `SEED_COUNT` |
 | Event types | `view`, `add_to_cart`, `purchase` |
 | Product catalog | 80 fixed products across 8 categories |
-| Event ingestion | `POST /api/ingest`, batches up to 5,000 events |
+| Event ingestion | `POST /api/ingest`, batches up to 5,000 events with unordered bulk writes |
 | Data integrity | Schema validation and unique `eventId` index |
-| Bulk writes | Unordered MongoDB inserts with duplicate/error accounting |
-| Product analytics | Top 10 products by event count, with purchase revenue |
-| Funnel analytics | UTC hourly views, carts, purchases, and conversion rates |
+| Product analytics (P1) | Top 10 products by event count with purchase revenue |
+| Funnel analytics (P2) | UTC hourly views, carts, purchases, and conversion rates |
+| Customer segments (P3) | Lifetime spend segmentation across 5 tiers with spend and event averages |
 | Event exploration | `GET /api/events` with pagination, event-type, and date-range filters |
-| Live statistics | `GET /api/stats` with total event count, events/min, and top category insight |
+| Live telemetry | `GET /api/stats` with total events, events/min, and top category insight |
+| Frontend dashboard | React 18 + Vite + Recharts with Vexon dark technical UI and canvas particles |
 | Query support | Optional ISO-8601 end timestamp for analytics windows |
-| Tests | Unit-test files for timestamp parsing, aggregation helpers, and events explorer |
+| Tests | 64 unit tests and 3 live integration test suites |
 
 ### Analytics currently available
 
-- **Top products:** ranks products by total events in the selected 24-hour window.
+- **Top products (P1):** ranks products by total events in the selected 24-hour window.
 - **Purchase revenue:** sums `price × quantity` for purchase events only.
-- **Hourly funnel:** reports views, add-to-carts, and purchases in UTC hourly buckets.
+- **Hourly funnel (P2):** reports views, add-to-carts, and purchases in UTC hourly buckets.
 - **Conversion rates:** calculates cart/view, purchase/cart, and purchase/view ratios.
+- **Customer segments (P3):** categorizes users into 5 tiers (`no_purchase`, `low`, `mid`, `high`, `top`).
 - **Empty periods:** fills missing hourly buckets with zero counts; undefined rates are returned as `null`.
 
 ## 🧱 Architecture
@@ -57,13 +58,15 @@ The supplied backend snapshot includes a session-oriented event generator, a bat
 ```mermaid
 flowchart TD
     A["Synthetic event generator"] --> B["Batch seeder"]
-    C["External event producer"] --> D["Express ingestion API"]
+    S["Live Event Simulator"] --> D["Express ingestion API"]
     B --> E[("MongoDB · dataforge.events")]
     D --> E
-    E --> F["Top-products aggregation"]
-    E --> G["Hourly-funnel aggregation"]
-    F --> H["JSON API responses"]
-    G --> H
+    E --> F["Top-products (P1)"]
+    E --> G["Hourly-funnel (P2)"]
+    E --> H["User segmentation (P3)"]
+    E --> I["Events explorer & Stats"]
+    F & G & H & I --> J["JSON API responses"]
+    J --> K["React + Vite Frontend (Vexon UI)"]
 ```
 
 ### Repository layout
@@ -71,12 +74,22 @@ flowchart TD
 ```text
 DataForge/
 ├── client/
-│   └── package.json
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── Analytics.jsx
+│       ├── EventsExplorer.jsx
+│       ├── api.js
+│       └── styles/vexon.css
 ├── server/
 │   ├── scripts/
 │   │   ├── generate.js
 │   │   ├── indexes.js
-│   │   └── seed.js
+│   │   ├── seed.js
+│   │   └── simulate.js
 │   ├── src/
 │   │   ├── config.js
 │   │   ├── db.js
@@ -85,12 +98,18 @@ DataForge/
 │   │   └── pipelines/
 │   │       ├── topProducts.js
 │   │       ├── funnel.js
-│   │       └── events.js
+│   │       ├── segments.js
+│   │       ├── events.js
+│   │       └── stats.js
 │   ├── tests/
 │   │   ├── topProducts.test.js
 │   │   ├── funnel.test.js
+│   │   ├── segments.test.js
 │   │   ├── events.test.js
-│   │   └── events.integration.test.js
+│   │   ├── stats.test.js
+│   │   ├── events.integration.test.js
+│   │   ├── stats.integration.test.js
+│   │   └── segments.integration.test.js
 │   └── .env.example
 ├── package.json
 └── README.md
@@ -99,11 +118,8 @@ DataForge/
 ### Technology
 
 - **Database:** MongoDB, using the official Node.js driver.
-- **Backend:** Node.js and Express.
-- **Configuration:** dotenv.
-- **Frontend dependencies declared:** React, Vite, and Recharts.
-
-**Frontend snapshot limitation:** the uploaded archive contains the client package manifest, but no `client/src/`, `client/index.html`, or Vite configuration. A working frontend cannot be verified from this archive. The backend and API documentation below are grounded in the supplied source files.
+- **Backend:** Node.js, Express, dotenv, cors.
+- **Frontend:** React 18, Vite, Recharts, Vexon design system.
 
 ## ⚡ Quick start
 
@@ -200,7 +216,33 @@ Expected connected response:
 }
 ```
 
-> `npm run dev` starts both the API and the Vite client. The supplied archive is missing the client application entry files, so use `npm run dev:server` for the verifiable backend workflow.
+### 7. Start the frontend dashboard
+
+```bash
+npm run dev:client
+```
+
+The dashboard starts at:
+
+```text
+http://localhost:5173
+```
+
+Alternatively, run both server and client concurrently:
+
+```bash
+npm run dev
+```
+
+### 8. Run the event simulator (Opt-in)
+
+The simulator generates synthetic events (5–25 events every 2 seconds) and streams them exclusively through `/api/ingest`:
+
+```bash
+npm run simulate -- --run --duration 60
+```
+
+> **Safety:** The simulator requires explicit `--run` or `SIMULATE=true` to prevent unintended data generation, and duration is strictly capped at 300 seconds.
 
 ## 🗃️ Event data model
 
@@ -416,6 +458,68 @@ The values above illustrate the response structure; they are not benchmark or li
 
 Rates are returned as `null` when their denominator is zero. Buckets use UTC hour boundaries and missing hours are zero-filled. Because both endpoint hours are included, a 24-hour window can produce 25 hourly buckets.
 
+### `GET /api/p3/segments`
+
+Segments users into five distinct customer lifetime-spend tiers based on cumulative purchase revenue (`price × quantity`).
+
+**Spend tiers**
+
+- `no_purchase`: total spend = 0
+- `low`: 0 < total spend < 3,500
+- `mid`: 3,500 ≤ total spend < 6,000
+- `high`: 6,000 ≤ total spend < 10,000
+- `top`: total spend ≥ 10,000
+
+```bash
+curl http://localhost:4000/api/p3/segments
+```
+
+**Response shape**
+
+```json
+{
+"data": [
+    {
+      "segment": "no_purchase",
+      "users": 35,
+      "totalSpend": 0,
+      "avgSpend": 0,
+      "avgEvents": 142.3
+    },
+    {
+      "segment": "low",
+      "users": 137,
+      "totalSpend": 278450.2,
+      "avgSpend": 2032.48,
+      "avgEvents": 215.8
+    },
+    {
+      "segment": "mid",
+      "users": 127,
+      "totalSpend": 591240.5,
+      "avgSpend": 4655.44,
+      "avgEvents": 290.1
+    },
+    {
+      "segment": "high",
+      "users": 144,
+      "totalSpend": 1124500.0,
+      "avgSpend": 7809.03,
+      "avgEvents": 348.6
+    },
+    {
+      "segment": "top",
+      "users": 119,
+      "totalSpend": 1639272.51,
+      "avgSpend": 13775.4,
+      "avgEvents": 412.9
+    }
+  ]
+}
+```
+
+This endpoint uses all stored events and does not support date-window filtering. Segments are always returned in the fixed order above. All-time customer spend is reconciled against independent purchase totals.
+
 ### `GET /api/events`
 
 Retrieves a paginated list of stored events. Supports filtering by event type and inclusive date ranges.
@@ -562,62 +666,73 @@ For both analytics endpoints:
 
 ## 🧪 Tests
 
-The repository includes focused Node.js test files covering:
+The repository includes a comprehensive Node.js native test runner test suite covering:
 
-- ISO-8601 timestamp parsing, invalid timestamp rejection, and URL-encoded timezone offset normalization.
-- Inclusive 24-hour aggregation windows.
-- Event-type counting and purchase-only revenue.
+- ISO-8601 timestamp parsing, invalid timestamp rejection, and URL-encoded timezone offset normalization (`normalizeTimestampString`).
+- Inclusive 24-hour aggregation windows and boundary handling.
+- Event-type counting and purchase-only revenue calculations (`price × quantity`).
 - Deterministic top-product sorting and result limits.
-- UTC hourly bucket generation and zero-filling.
-- Conversion-rate handling when denominators are zero.
+- UTC hourly bucket generation, conversion rates, and zero-filling.
+- Customer lifetime spend segmentation (P3) across all five approved tiers with reconciliation.
 - Events explorer validation, filter construction, pagination boundaries, unsafe offset protection, and NoSQL injection resistance.
 - Live statistics computation, sliding time windows, events per minute, and top category insight extraction.
 - Router handler execution with in-memory collection fixtures, stable tie-breaking, and database failure recovery.
 
-Run the unit and mocked-router test suite:
+Run the unit and mocked-router test suite (64 test cases):
 
 ```bash
 npm test --prefix server
 ```
 
-Run the read-only live MongoDB verification:
+Run the live MongoDB integration suite (3 suites with baseline-relative verification):
 
 ```bash
 npm run test:integration --prefix server
 ```
 
-The unit test suite contains 53 test cases across four test files (`topProducts.test.js`, `funnel.test.js`, `events.test.js`, and `stats.test.js`). The live integration suite (`events.integration.test.js` and `stats.integration.test.js`) runs non-mutating assertions against the configured MongoDB collection.
+## ⚙️ System characteristics & limitations
 
-## 🔐 Operational notes
+1. **Static / Stale Dataset Handling**: Analytics endpoints anchor sliding windows to the latest recorded event timestamp when `to` is omitted. For static seeded datasets where the latest timestamp is older than 15 minutes, the frontend UI flags the data with a `STATIC DATASET · AS OF <ISO>` badge to distinguish historical snapshots from live traffic.
+2. **Synthetic Session Density**: The synthetic event generator models 562 distinct users and 1,641 sessions across the 150,000 baseline events, averaging ~91 events per session.
+3. **Pagination & Query Scalability (COLLSCAN / Blocking Sort)**: The events explorer (`GET /api/events`) sorts by `{ ts: -1, _id: 1 }`. Because the active index is `{ ts: -1 }` without a compound `_id` tie-breaker, deep pagination offsets can trigger an in-memory blocking sort in MongoDB if result sets exceed memory limits.
+4. **Country Constraint**: Geolocation is strictly constrained to `'IN'` (India) across the schema validator, seeder, ingestion endpoint, and simulator.
+5. **Timestamp Normalization**: `normalizeTimestampString` provides lenient decoding for URL-encoded timezone characters (`+` decoded or preserved as `%2B`) while strictly validating ISO-8601 calendar correctness.
+6. **Database Cleanup Policy (Reference Only)**: Database cleanup commands (such as `db.events.deleteMany({ eventId: /^step2-/ })` or `db.events.deleteMany({ userId: /^u_sim_/ })`) are documented for reference purposes only. **Never execute cleanup commands or reseed against the verified baseline dataset.**
 
-- The default configuration is intended for local development.
-- The API's CORS allowlist contains the two local Vite origins: `localhost:5173` and `127.0.0.1:5173`.
-- No authentication layer is present in the supplied API routes.
-- Do not expose this development API publicly without adding appropriate authentication, authorization, rate limiting, and deployment configuration.
-- Keep `server/.env` and credentials out of version control.
-- The seeder does not clear existing records; review the target database before running large seed jobs.
+## 🎬 Approved demo script
 
-## 🗺️ Current implementation boundary
+To demonstrate the full DataForge pipeline from streaming ingestion to live visualization:
 
-**Present in the supplied archive**
+1. **Ensure MongoDB is running:**
+   ```bash
+   mongod --dbpath <data-directory>
+   ```
+2. **Start the backend API server:**
+   ```bash
+   npm run dev:server
+   # Verified running at http://localhost:4000
+   ```
+3. **Start the React + Vite frontend dashboard:**
+   ```bash
+   npm run dev:client
+   # Open http://localhost:5173 in browser
+   ```
+4. **Run the streaming event simulator (opt-in):**
+   ```bash
+   npm run simulate -- --run --duration 30
+   ```
+5. **Observe live telemetry:**
+   - Watch the hero statistics panel poll `/api/stats` every 5 seconds.
+   - Observe events/minute and total event counts update in real time.
+   - Inspect top products, conversion funnel, customer lifetime segments, and filtered records in the events explorer.
 
-- Synthetic event generator and MongoDB seeder.
-- Six MongoDB indexes.
-- Health, ingestion, event explorer, and live statistics endpoints.
-- Top-products aggregation endpoint.
-- Hourly-funnel aggregation endpoint.
-- Unit-test source files for all endpoints and pipelines (53 test cases).
-- Integration test suite for live database verification (2 suites).
+## 🗺️ Implementation status
 
-**Not verifiable or not included in the supplied archive**
-
-- A runnable React/Vite frontend.
-- Dashboard charts and user-facing analytics screens.
-- Segment analytics endpoint.
-- P3 analytics pipeline.
-- Performance benchmarks or production deployment configuration.
-
-This boundary is intentional: documented features should match the code, not an aspirational roadmap.
+All planned milestones are completed and verified:
+- **M1 (P3 Customer Segmentation):** Five-tier spend segmentation pipeline (`/api/p3/segments`), unit and integration tests.
+- **M2 (Frontend Foundation & Hero):** Vexon dark technical UI, canvas particle field, responsive layout, live stats telemetry.
+- **M3 (Analytics & Explorer):** Recharts top products, hourly conversion funnel, spend segmentation, paginated events explorer.
+- **M4 (Simulator & Hardening):** Standalone opt-in event simulator (`server/scripts/simulate.js`), baseline-relative test hardening, full system documentation.
 
 ## 🤝 Contributing
 

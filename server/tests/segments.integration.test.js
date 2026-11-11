@@ -42,7 +42,7 @@ test('Integration: live read-only verification of /api/p3/segments against exist
 
         // 1. Assert initial document count
         const initialCount = await collection.countDocuments();
-        assert.equal(initialCount, 150002, 'Database count should be untouched at 150002');
+        assert.ok(initialCount >= 150000, 'Database should contain baseline dataset with at least 150000 events');
 
         // 2. Independently calculate ground truths
         const distinctUsers = await collection.distinct('userId');
@@ -98,7 +98,7 @@ test('Integration: live read-only verification of /api/p3/segments against exist
 
         // 8. Assert final document count is strictly unchanged
         const finalCount = await collection.countDocuments();
-        assert.equal(finalCount, 150002, 'Database count must remain strictly unchanged');
+        assert.equal(finalCount, initialCount, 'Database count must remain strictly unchanged');
     } finally {
         if (client) {
             await client.close();

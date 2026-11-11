@@ -46,8 +46,10 @@ test('Integration: live read-only verification against existing dataset', async 
         assert.equal(defaultRes.status, 200);
         assert.equal(defaultRes.body.page, 1);
         assert.equal(defaultRes.body.limit, 25);
-        assert.equal(defaultRes.body.total, 150002);
-        assert.equal(defaultRes.body.totalPages, 6001);
+        const baselineTotal = defaultRes.body.total;
+        assert.ok(baselineTotal >= 150000, 'Baseline total events must be at least 150000');
+        const expectedTotalPages = Math.ceil(baselineTotal / 25);
+        assert.equal(defaultRes.body.totalPages, expectedTotalPages);
         assert.equal(defaultRes.body.data.length, 25);
         assert.equal('_id' in defaultRes.body.data[0], false);
         assert.deepEqual(defaultRes.body.filters, {
@@ -88,8 +90,8 @@ test('Integration: live read-only verification against existing dataset', async 
         const pastRes = await invokeHandler(handler, { page: '7000' });
         assert.equal(pastRes.status, 200);
         assert.equal(pastRes.body.page, 7000);
-        assert.equal(pastRes.body.total, 150002);
-        assert.equal(pastRes.body.totalPages, 6001);
+        assert.equal(pastRes.body.total, baselineTotal);
+        assert.equal(pastRes.body.totalPages, expectedTotalPages);
         assert.deepEqual(pastRes.body.data, []);
     } finally {
         await closeDatabase();
