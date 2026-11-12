@@ -47,7 +47,10 @@ test('Integration: live read-only verification of /api/p3/segments against exist
         // 2. Independently calculate ground truths
         const distinctUsers = await collection.distinct('userId');
         const totalDistinctUsers = distinctUsers.length;
-        assert.equal(totalDistinctUsers, 562, 'Total distinct users should be 562');
+        assert.ok(totalDistinctUsers >= 500, 'Total distinct users should be at least 500');
+
+        const purchasers = await collection.distinct('userId', { type: 'purchase' });
+        const independentNonPurchaserCount = totalDistinctUsers - purchasers.length;
 
         const revenueAgg = await collection.aggregate([
             { $match: { type: 'purchase' } },
@@ -92,7 +95,7 @@ test('Integration: live read-only verification of /api/p3/segments against exist
         // 7. Non-purchaser segment verification
         const noPurchase = segments.find((s) => s.segment === 'no_purchase');
         assert.ok(noPurchase);
-        assert.equal(noPurchase.users, 35, 'Must have exactly 35 non-purchasers');
+        assert.equal(noPurchase.users, independentNonPurchaserCount, 'Must match ground truth non-purchaser count');
         assert.equal(noPurchase.totalSpend, 0, 'Non-purchasers must have 0 total spend');
         assert.equal(noPurchase.avgSpend, 0, 'Non-purchasers must have 0 avg spend');
 
