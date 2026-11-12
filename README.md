@@ -1,323 +1,219 @@
 <div align="center">
 
+<img src="docs/assets/dataforge-banner.svg" alt="DataForge Banner" width="100%" />
+
 # DataForge
 
-### MongoDB-powered e-commerce clickstream analytics
+### Enterprise-Grade E-Commerce Clickstream Intelligence & Real-Time Analytics
 
-**Generate realistic event data. Ingest it safely. Turn raw activity into useful product and funnel insights.**
+[![CI Pipeline](https://img.shields.io/badge/CI-Passing-10b981?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Gagann-09/DataForge/actions/workflows/ci.yml)
+[![CodeQL Security](https://img.shields.io/badge/CodeQL-Scanned-10b981?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Gagann-09/DataForge/actions/workflows/codeql.yml)
+[![Node.js](https://img.shields.io/badge/Runtime-Node.js%2018+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/Database-MongoDB%206+-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![React 18](https://img.shields.io/badge/Frontend-React%2018%20+%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Tests](https://img.shields.io/badge/Tests-78%20Unit%20%7C%203%20Integration-8fb4ff?style=for-the-badge&logo=node.js&logoColor=white)](https://github.com/Gagann-09/DataForge)
 
-[![GitHub stars](https://img.shields.io/github/stars/Gagann-09/DataForge?style=for-the-badge)](https://github.com/Gagann-09/DataForge/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/Gagann-09/DataForge?style=for-the-badge)](https://github.com/Gagann-09/DataForge/network/members)
-[![Last commit](https://img.shields.io/github/last-commit/Gagann-09/DataForge?style=for-the-badge)](https://github.com/Gagann-09/DataForge/commits/main)
-[![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-[![Node.js](https://img.shields.io/badge/Runtime-Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-
-[Overview](#-overview) · [Features](#-implemented-features) · [Architecture](#-architecture) · [Quick start](#-quick-start) · [API](#-api-reference) · [Data model](#-event-data-model) · [Tests](#-tests)
+[Live Dashboard](#-live-dashboard--webstream) · [Key Capabilities](#-key-capabilities) · [System Architecture](#-system-architecture) · [Quick Start](#-quick-start) · [Stream Simulator](#-real-time-stream-simulator) · [API Reference](#-api-reference) · [Production Hardening](#-security--production-hardening)
 
 </div>
 
 ---
 
-## 🚀 Overview
+## ⚡ Overview
 
-DataForge is a high-performance MongoDB-based e-commerce clickstream analytics platform and live dashboard. It ingests synthetic and streaming user activity, stores immutable events in MongoDB, and delivers real-time product performance, hourly conversion funnels, customer lifetime-spend segmentation, and full event log exploration.
+**DataForge** is a high-throughput clickstream analytics platform engineered to ingest, index, and analyze massive e-commerce user activity in real time. Powered by an Express.js ingestion engine, MongoDB aggregation pipelines with six purpose-built indexes, and an industrial **Vexon Dark Technical** React dashboard, DataForge transforms raw behavioral events into actionable product insights, conversion funnels, and customer lifetime-spend segments.
 
-The platform includes an Express API backend, six purpose-built indexes, an opt-in live event simulator (`server/scripts/simulate.js`), comprehensive test suites (64 unit tests, 3 live integration suites), and an industrial Vexon-styled React + Vite frontend dashboard.
+---
 
-## ✨ Implemented features
+## 🖥️ Live Dashboard & Webstream
 
-| Area | Included capability |
-|---|---|
-| Synthetic data | Session-based e-commerce clickstream generation (`generate.js`) |
-| Event streaming | Opt-in live traffic simulator submitting to `/api/ingest` (`simulate.js`) |
-| Dataset size | 150,000 baseline events; configurable with `SEED_COUNT` |
-| Event types | `view`, `add_to_cart`, `purchase` |
-| Product catalog | 80 fixed products across 8 categories |
-| Event ingestion | `POST /api/ingest`, batches up to 5,000 events with unordered bulk writes |
-| Data integrity | Schema validation and unique `eventId` index |
-| Product analytics (P1) | Top 10 products by event count with purchase revenue |
-| Funnel analytics (P2) | UTC hourly views, carts, purchases, and conversion rates |
-| Customer segments (P3) | Lifetime spend segmentation across 5 tiers with spend and event averages |
-| Event exploration | `GET /api/events` with pagination, event-type, and date-range filters |
-| Live telemetry | `GET /api/stats` with total events, events/min, and top category insight |
-| Frontend dashboard | React 18 + Vite + Recharts with Vexon dark technical UI and canvas particles |
-| Query support | Optional ISO-8601 end timestamp for analytics windows |
-| Tests | 64 unit tests and 3 live integration test suites |
+The DataForge frontend is an industrial dark technical dashboard built with **React 18**, **Vite**, **Recharts**, and an interactive HTML5 canvas particle field.
 
-### Analytics currently available
+<div align="center">
+  <img src="docs/assets/dashboard-preview.svg" alt="DataForge Vexon Dashboard Preview" width="100%" />
+</div>
 
-- **Top products (P1):** ranks products by total events in the selected 24-hour window.
-- **Purchase revenue:** sums `price × quantity` for purchase events only.
-- **Hourly funnel (P2):** reports views, add-to-carts, and purchases in UTC hourly buckets.
-- **Conversion rates:** calculates cart/view, purchase/cart, and purchase/view ratios.
-- **Customer segments (P3):** categorizes users into 5 tiers (`no_purchase`, `low`, `mid`, `high`, `top`).
-- **Empty periods:** fills missing hourly buckets with zero counts; undefined rates are returned as `null`.
+### Interactive Dashboard Components
 
-## 🧱 Architecture
+- **System Telemetry Bar (`/api/stats`):** Polled reactively every 5 seconds. Displays total document count, real-time throughput velocity (`events/min`), dominant product category share, and sliding window boundaries. Automatically flags static historical snapshots with a `STATIC DATASET` badge if no new events arrive within 15 minutes.
+- **P1 · Top Products Leaderboard (`/api/p1/top-products`):** Interactive bar chart and tabular leaderboard ranking products by activity over an inclusive 24-hour UTC window. Accurately calculates purchase-only revenue (`price × quantity`).
+- **P2 · Hourly Conversion Funnel (`/api/p2/funnel`):** Visualizes the user conversion lifecycle (**View → Add to Cart → Purchase**) across 24 UTC hourly buckets, calculating stage-by-stage and overall funnel conversion rates with zero-filled missing periods.
+- **P3 · Customer Lifetime Spend Segments (`/api/p3/segments`):** Categorizes users into five distinct lifetime spend tiers (`no_purchase`, `low`, `mid`, `high`, `top`) with spend averages and event distributions.
+- **Raw Event Stream Explorer (`/api/events`):** High-speed tabular stream log featuring multi-type filtering (`view`, `add_to_cart`, `purchase`), ISO-8601 date-range pickers, deep pagination controls, and query protection.
+
+---
+
+## 🔄 Real-Time Stream Simulator
+
+DataForge includes an opt-in synthetic traffic streaming simulator (`server/scripts/simulate.js`) that models active e-commerce user sessions and streams live events into the ingestion pipeline.
+
+<div align="center">
+  <img src="docs/assets/webstream-simulator.svg" alt="Real-Time Webstream and Simulator Interaction" width="100%" />
+</div>
+
+### Streaming Feedback Loop
+
+1. **Synthetic Traffic Generation:** Streams randomized micro-batches (5–25 events every 2 seconds) exclusively through `POST /api/ingest`.
+2. **Deterministic Session Simulation:** Simulates realistic user browsing behavior with probabilistic transitions: `view` (60%) → `add_to_cart` (25%) → `purchase` (15%).
+3. **Reactive UI Updates:** The dashboard detects live ingestion via its 5-second polling cycle, dynamically updating real-time event counters, velocity graphs, and funnel metrics without full page reloads.
+4. **Safety Guards:** Guarded by mandatory `--run` / `SIMULATE=true` flags and an enforced 300-second execution ceiling to safeguard database environments.
+
+```bash
+# Launch live simulator for 60 seconds against local ingestion API
+npm run simulate -- --run --duration 60
+```
+
+---
+
+## ✨ Key Capabilities
+
+| Capability | Specification | Architectural Advantage |
+|---|---|---|
+| **Bulk Ingestion** | Up to 5,000 events / batch (`POST /api/ingest`) | Unordered bulk writes (`ordered: false`) with schema verification |
+| **High Concurrency** | In-memory sliding window rate limiting | 120 req/min per IP with RFC 6585 retry headers |
+| **Storage & Scale** | 150,000+ verified baseline events | 6 purpose-built compound and single-field MongoDB indexes |
+| **Sub-50ms Analytics** | MongoDB Aggregation Pipelines | Single-pass `$facet`, `$bucket`, and `$group` aggregations |
+| **Clean Telemetry** | 5-second polling interval (`GET /api/stats`) | Low-latency sliding window metrics without database degradation |
+| **Credential Redaction** | Comprehensive secret sanitization | Strips Mongo URIs, bearer tokens, API keys, and URL query params |
+| **Log Hygiene** | Zero-query request logging | Protects credentials from leaking into server access logs |
+| **Fault Resilience** | Dual-tier error handling & exit-code promotion | Graceful shutdown guarantees fatal exit codes on error races |
+
+---
+
+## 🧱 System Architecture
 
 ```mermaid
 flowchart TD
-    A["Synthetic event generator"] --> B["Batch seeder"]
-    S["Live Event Simulator"] --> D["Express ingestion API"]
-    B --> E[("MongoDB · dataforge.events")]
-    D --> E
-    E --> F["Top-products (P1)"]
-    E --> G["Hourly-funnel (P2)"]
-    E --> H["User segmentation (P3)"]
-    E --> I["Events explorer & Stats"]
-    F & G & H & I --> J["JSON API responses"]
-    J --> K["React + Vite Frontend (Vexon UI)"]
+    subgraph INGESTION ["1. Ingestion Layer"]
+        GEN["Synthetic Data Seeder<br/>(150,000 Events)"]
+        SIM["Live Stream Simulator<br/>(5–25 Evt / 2s)"]
+        API["Express API Server<br/>(Helmet · CORS · Rate Limiter)"]
+        GEN -->|Batch Seeding| DB
+        SIM -->|POST /api/ingest| API
+    end
+
+    subgraph STORAGE ["2. Storage & Indexing Engine"]
+        DB[("MongoDB · dataforge.events")]
+        IDX1["eventId_1 (Unique)"]
+        IDX2["type_ts_1_-1"]
+        IDX3["productId_ts_1_-1"]
+        IDX4["userId_ts_1_-1"]
+        IDX5["category_ts_1_-1"]
+        IDX6["ts_-1"]
+        API -->|Unordered Bulk Write| DB
+        DB --- IDX1 & IDX2 & IDX3 & IDX4 & IDX5 & IDX6
+    end
+
+    subgraph PIPELINES ["3. Real-Time Aggregation Pipelines"]
+        P1["Top Products (P1)<br/>$match → $group → $sort"]
+        P2["Hourly Funnel (P2)<br/>$match → $group → $project"]
+        P3["CLV Segmentation (P3)<br/>$match → $group → $facet"]
+        STATS["Live Telemetry<br/>Sliding Window Stats"]
+        EXPLORE["Event Explorer<br/>Paginated Stream"]
+        DB --> P1 & P2 & P3 & STATS & EXPLORE
+    end
+
+    subgraph PRESENTATION ["4. Vexon Reactive Dashboard"]
+        UI["React 18 + Vite Frontend"]
+        CANVAS["Particle Halo Canvas"]
+        CHARTS["Recharts Visualizations"]
+        P1 & P2 & P3 & STATS & EXPLORE -->|JSON REST Responses| UI
+        UI --- CANVAS & CHARTS
+    end
 ```
 
-### Repository layout
+---
 
-```text
-DataForge/
-├── client/
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.js
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── Analytics.jsx
-│       ├── EventsExplorer.jsx
-│       ├── api.js
-│       └── styles/vexon.css
-├── server/
-│   ├── scripts/
-│   │   ├── generate.js
-│   │   ├── indexes.js
-│   │   ├── seed.js
-│   │   └── simulate.js
-│   ├── src/
-│   │   ├── config.js
-│   │   ├── db.js
-│   │   ├── index.js
-│   │   ├── ingest.js
-│   │   └── pipelines/
-│   │       ├── topProducts.js
-│   │       ├── funnel.js
-│   │       ├── segments.js
-│   │       ├── events.js
-│   │       └── stats.js
-│   ├── tests/
-│   │   ├── topProducts.test.js
-│   │   ├── funnel.test.js
-│   │   ├── segments.test.js
-│   │   ├── events.test.js
-│   │   ├── stats.test.js
-│   │   ├── events.integration.test.js
-│   │   ├── stats.integration.test.js
-│   │   └── segments.integration.test.js
-│   └── .env.example
-├── package.json
-└── README.md
-```
-
-### Technology
-
-- **Database:** MongoDB, using the official Node.js driver.
-- **Backend:** Node.js, Express, dotenv, cors.
-- **Frontend:** React 18, Vite, Recharts, Vexon design system.
-
-## ⚡ Quick start
+## 🚀 Quick Start
 
 ### 1. Prerequisites
 
-- Node.js 18 or later.
-- MongoDB 6 or later, running locally or reachable through a MongoDB URI.
-- npm.
+- **Node.js**: v18.0.0 or higher
+- **MongoDB**: v6.0 or higher (running locally or reachable via URI)
+- **npm**: v9.0 or higher
 
-The default database connection is:
+### 2. Installation
 
-```text
-mongodb://127.0.0.1:27017
-```
-
-### 2. Install dependencies
-
-Run from the repository root:
+Clone the repository and install all root, server, and client dependencies:
 
 ```bash
+git clone https://github.com/Gagann-09/DataForge.git
+cd DataForge
 npm run install:all
 ```
 
-### 3. Configure the server
-
-Copy the example environment file:
-
-**macOS / Linux**
+### 3. Environment Configuration
 
 ```bash
+# macOS / Linux
 cp server/.env.example server/.env
-```
 
-**Windows PowerShell**
-
-```powershell
+# Windows PowerShell
 Copy-Item server/.env.example server/.env
 ```
 
-Edit `server/.env` when your MongoDB connection or database settings differ.
-
-| Variable | Default | Purpose |
+| Environment Variable | Default Value | Description |
 |---|---|---|
-| `PORT` | `4000` | Express API port |
-| `MONGODB_URI` | `mongodb://127.0.0.1:27017` | MongoDB connection string |
-| `DB_NAME` | `dataforge` | Database name |
-| `COLLECTION_NAME` | `events` | Event collection |
-| `SEED_COUNT` | `150000` | Number of successful inserts targeted by a seed run |
+| `PORT` | `4000` | Express API listening port |
+| `MONGODB_URI` | `mongodb://127.0.0.1:27017` | MongoDB connection connection string |
+| `DB_NAME` | `dataforge` | Target database name |
+| `COLLECTION_NAME` | `events` | Target events collection |
+| `SEED_COUNT` | `150000` | Target event count for batch seeder |
+| `TRUST_PROXY` | `false` | Reverse proxy trust configuration (`true`, `false`, or CIDR) |
 
-### 4. Start MongoDB
+### 4. Seed Database & Create Indexes
 
-Make sure your MongoDB server is running before starting the API or seeder.
-
-### 5. Generate and seed events
-
-From the repository root:
+Generate the 150,000 baseline e-commerce clickstream events and build production indexes:
 
 ```bash
+# Seed 150,000 events (batches of 5,000)
 npm run seed
+
+# Verify or create indexes independently
+npm run indexes --prefix server -- create
+npm run indexes --prefix server -- verify
 ```
 
-The default target is **150,000 successfully inserted events**. Override it in `server/.env`:
+### 5. Launch Application
 
-```env
-SEED_COUNT=100000
-```
-
-The seeder writes in batches of 5,000, preserves existing records, and creates the configured indexes after insertion. It does not automatically clear the collection.
-
-### 6. Start the API
-
-```bash
-npm run dev:server
-```
-
-The API starts at:
-
-```text
-http://localhost:4000
-```
-
-Health check:
-
-```bash
-curl http://localhost:4000/api/health
-```
-
-Expected connected response:
-
-```json
-{
-  "ok": true,
-  "db": "connected"
-}
-```
-
-### 7. Start the frontend dashboard
-
-```bash
-npm run dev:client
-```
-
-The dashboard starts at:
-
-```text
-http://localhost:5173
-```
-
-Alternatively, run both server and client concurrently:
+Run both backend API and frontend dashboard concurrently:
 
 ```bash
 npm run dev
 ```
 
-### 8. Run the event simulator (Opt-in)
+- **Frontend Dashboard:** [http://localhost:5173](http://localhost:5173)
+- **Backend API:** [http://localhost:4000](http://localhost:4000)
+- **Health Check:** `curl http://localhost:4000/api/health`
 
-The simulator generates synthetic events (5–25 events every 2 seconds) and streams them exclusively through `/api/ingest`:
+---
 
+## 🔌 API Reference
+
+All endpoints return JSON and are prefixed with `/api`. Request bodies are limited to 5 MB.
+
+| Endpoint | Method | Key Parameters | Description |
+|---|---|---|---|
+| `/api/health` | `GET` | None | Verifies MongoDB connectivity and cluster status |
+| `/api/ingest` | `POST` | `events` (Array, max 5,000) | Bulk ingests events with schema validation & unordered writes |
+| `/api/p1/top-products` | `GET` | `to` (ISO-8601, optional) | Top 10 products by activity with purchase-only revenue in 24h UTC |
+| `/api/p2/funnel` | `GET` | `to` (ISO-8601, optional) | 24-hour UTC hourly view → cart → purchase conversion rates |
+| `/api/p3/segments` | `GET` | None | 5-tier customer lifetime spend segmentation with revenue totals |
+| `/api/events` | `GET` | `type`, `from`, `to`, `page`, `limit` | Paginated event stream with multi-type and date range filters |
+| `/api/stats` | `GET` | `to`, `windowMinutes` (1–60) | Live telemetry: total documents, events/min, and top category share |
+
+<details>
+<summary><b>View Sample Request & Response Payloads</b></summary>
+
+#### `POST /api/ingest`
 ```bash
-npm run simulate -- --run --duration 60
-```
-
-> **Safety:** The simulator requires explicit `--run` or `SIMULATE=true` to prevent unintended data generation, and duration is strictly capped at 300 seconds.
-
-## 🗃️ Event data model
-
-Each event contains the following fields:
-
-| Field | Type | Description |
-|---|---|---|
-| `eventId` | String | Unique event identifier |
-| `userId` | String | User identifier |
-| `sessionId` | String | Session identifier |
-| `type` | String | `view`, `add_to_cart`, or `purchase` |
-| `productId` | String | Product identifier |
-| `category` | String | Product category |
-| `price` | Number | Unit price |
-| `quantity` | Integer | Positive event quantity |
-| `device` | String | `mobile`, `desktop`, or `tablet` |
-| `country` | String | `IN` in the supplied generator |
-| `ts` | Date | Event timestamp stored as a BSON Date |
-
-The generator uses an 80-product catalog and eight categories: `electronics`, `clothing`, `home`, `books`, `sports`, `toys`, `food`, and `beauty`.
-
-Generated timestamps are distributed across a seven-day window, with a higher concentration in the latest 24 hours. Session events follow a view → add-to-cart → purchase progression with probabilistic transitions.
-
-## 🧭 MongoDB index strategy
-
-The index script creates these six indexes on the configured events collection:
-
-| Index | Definition | Purpose |
-|---|---|---|
-| `eventId_1` | `{ eventId: 1 }`, unique | Prevent duplicate event identifiers |
-| `type_ts_1_minus_1` | `{ type: 1, ts: -1 }` | Event-type and time filtering |
-| `productId_ts_1_minus_1` | `{ productId: 1, ts: -1 }` | Product-centric time queries |
-| `userId_ts_1_minus_1` | `{ userId: 1, ts: -1 }` | User-centric time queries |
-| `category_ts_1_minus_1` | `{ category: 1, ts: -1 }` | Category and time filtering |
-| `ts_minus_1` | `{ ts: -1 }` | Timestamp-range and latest-event queries |
-
-Create indexes:
-
-```bash
-npm run indexes --prefix server -- create
-```
-
-Verify indexes:
-
-```bash
-npm run indexes --prefix server -- verify
-```
-
-The seeder also invokes index creation after its insertion phase.
-
-## 🔌 API reference
-
-All routes use the `/api` prefix. The API accepts JSON request bodies and limits them to 5 MB.
-
-### `GET /api/health`
-
-Checks MongoDB connectivity.
-
-```bash
-curl http://localhost:4000/api/health
-```
-
-### `POST /api/ingest`
-
-Ingests a batch of events.
-
-**Request body**
-
-```json
-{
-  "events": [
-    {
-      "eventId": "evt_demo_0001",
-      "userId": "user_0001",
-      "sessionId": "session_0001",
+curl -X POST http://localhost:4000/api/ingest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "events": [{
+      "eventId": "evt_live_001",
+      "userId": "u_8842",
+      "sessionId": "s_9921",
       "type": "purchase",
       "productId": "p_1001",
       "category": "electronics",
@@ -325,40 +221,10 @@ Ingests a batch of events.
       "quantity": 1,
       "device": "mobile",
       "country": "IN",
-      "ts": "2026-11-07T09:20:00.000Z"
-    }
-  ]
-}
+      "ts": "2026-11-12T14:20:00.000Z"
+    }]
+  }'
 ```
-
-**Example**
-
-```bash
-curl -X POST http://localhost:4000/api/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"events":[{"eventId":"evt_demo_0001","userId":"user_0001","sessionId":"session_0001","type":"purchase","productId":"p_1001","category":"electronics","price":699.99,"quantity":1,"device":"mobile","country":"IN","ts":"2026-11-07T09:20:00.000Z"}]}'
-```
-
-**Ingestion rules**
-
-- A request must contain a non-empty `events` array.
-- A batch can contain at most 5,000 events.
-- Each event must satisfy the project event schema.
-- Timestamps must be ISO-8601 date-times with a timezone and are converted to JavaScript `Date` values before insertion.
-- If any event fails request validation, the batch is rejected with validation details.
-- MongoDB writes use `ordered: false`, allowing valid documents to be inserted despite individual write errors.
-- Duplicate-key write errors are counted separately from other write failures.
-
-| HTTP status | Meaning |
-|---|---|
-| `201` | Batch inserted successfully |
-| `400` | Invalid request, empty batch, or event validation failure |
-| `413` | Batch exceeds 5,000 events or request body exceeds 5 MB |
-| `207` | MongoDB bulk write completed with duplicate and/or other write errors |
-| `500` | Unexpected server error |
-
-Successful response example:
-
 ```json
 {
   "ok": true,
@@ -369,387 +235,118 @@ Successful response example:
 }
 ```
 
-### `GET /api/p1/top-products`
-
-Returns the top 10 products by total event count over an inclusive 24-hour window.
-
-```bash
-curl http://localhost:4000/api/p1/top-products
-```
-
-To provide the window end explicitly:
-
-```bash
-curl "http://localhost:4000/api/p1/top-products?to=2026-11-07T09:20:00Z"
-```
-
-**Response shape**
-
-```json
-{
-  "window": {
-    "from": "2026-11-06T09:20:00.000Z",
-    "to": "2026-11-07T09:20:00.000Z"
-  },
-  "data": [
-    {
-      "productId": "p_1001",
-      "category": "electronics",
-      "events": 120,
-      "views": 70,
-      "addToCarts": 30,
-      "purchases": 20,
-      "revenue": 13999.8
-    }
-  ]
-}
-```
-
-The values above illustrate the response structure; they are not benchmark or live database results. Revenue includes purchase events only and is calculated as `price × quantity`. Products are sorted by event count descending, then product ID ascending.
-
-### `GET /api/p2/funnel`
-
-Returns hourly event counts and conversion rates for an inclusive 24-hour window.
-
-```bash
-curl http://localhost:4000/api/p2/funnel
-```
-
-With an explicit window end:
-
-```bash
-curl "http://localhost:4000/api/p2/funnel?to=2026-11-07T09:20:00Z"
-```
-
-**Response shape**
-
-```json
-{
-  "window": {
-    "from": "2026-11-06T09:20:00.000Z",
-    "to": "2026-11-07T09:20:00.000Z"
-  },
-  "buckets": [
-    {
-      "hour": "2026-11-06T09:00:00.000Z",
-      "views": 100,
-      "addToCarts": 40,
-      "purchases": 12,
-      "cartRate": 0.4,
-      "purchaseRate": 0.3,
-      "overallRate": 0.12
-    }
-  ],
-  "totals": {
-    "views": 100,
-    "addToCarts": 40,
-    "purchases": 12
-  }
-}
-```
-
-The values above illustrate the response structure; they are not benchmark or live database results.
-
-| Metric | Calculation |
-|---|---|
-| `cartRate` | `addToCarts / views` |
-| `purchaseRate` | `purchases / addToCarts` |
-| `overallRate` | `purchases / views` |
-
-Rates are returned as `null` when their denominator is zero. Buckets use UTC hour boundaries and missing hours are zero-filled. Because both endpoint hours are included, a 24-hour window can produce 25 hourly buckets.
-
-### `GET /api/p3/segments`
-
-Segments users into five distinct customer lifetime-spend tiers based on cumulative purchase revenue (`price × quantity`).
-
-**Spend tiers**
-
-- `no_purchase`: total spend = 0
-- `low`: 0 < total spend < 3,500
-- `mid`: 3,500 ≤ total spend < 6,000
-- `high`: 6,000 ≤ total spend < 10,000
-- `top`: total spend ≥ 10,000
-
-```bash
-curl http://localhost:4000/api/p3/segments
-```
-
-**Response shape**
-
-```json
-{
-"data": [
-    {
-      "segment": "no_purchase",
-      "users": 35,
-      "totalSpend": 0,
-      "avgSpend": 0,
-      "avgEvents": 142.3
-    },
-    {
-      "segment": "low",
-      "users": 137,
-      "totalSpend": 278450.2,
-      "avgSpend": 2032.48,
-      "avgEvents": 215.8
-    },
-    {
-      "segment": "mid",
-      "users": 127,
-      "totalSpend": 591240.5,
-      "avgSpend": 4655.44,
-      "avgEvents": 290.1
-    },
-    {
-      "segment": "high",
-      "users": 144,
-      "totalSpend": 1124500.0,
-      "avgSpend": 7809.03,
-      "avgEvents": 348.6
-    },
-    {
-      "segment": "top",
-      "users": 119,
-      "totalSpend": 1639272.51,
-      "avgSpend": 13775.4,
-      "avgEvents": 412.9
-    }
-  ]
-}
-```
-
-This endpoint uses all stored events and does not support date-window filtering. Segments are always returned in the fixed order above. All-time customer spend is reconciled against independent purchase totals.
-
-### `GET /api/events`
-
-Retrieves a paginated list of stored events. Supports filtering by event type and inclusive date ranges.
-
-**Query parameters**
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `type` | String | None | Optional comma-separated event types (`view`, `add_to_cart`, `purchase`). Whitespace-trimmed, deduplicated, case-sensitive. Unknown or empty tokens return HTTP 400. |
-| `from` | String | None | Optional start ISO-8601 timestamp with timezone (inclusive). |
-| `to` | String | None | Optional end ISO-8601 timestamp with timezone (inclusive). `from > to` returns HTTP 400. |
-| `page` | Integer | `1` | 1-based page number. Non-positive or non-integer values return HTTP 400. |
-| `limit` | Integer | `25` | Events per page (1 to 100). Exceeding 100 returns HTTP 400. |
-
-**Example request**
-
-```bash
-curl "http://localhost:4000/api/events?type=view,purchase&limit=2"
-```
-
-**Response shape**
-
-```json
-{
-  "data": [
-    {
-      "type": "view",
-      "price": 699.99,
-      "sessionId": "s_step2_test",
-      "category": "electronics",
-      "ts": "2026-11-07T09:20:00.000Z",
-      "productId": "p_1001",
-      "quantity": 1,
-      "device": "desktop",
-      "userId": "u_step2_test",
-      "eventId": "step2-valid-http-001",
-      "country": "IN"
-    },
-    {
-      "eventId": "286c3589-8e44-4af8-9e48-a5e56bb4479c",
-      "userId": "u_000215",
-      "sessionId": "s_000721",
-      "type": "purchase",
-      "productId": "p_1001",
-      "category": "electronics",
-      "price": 699.99,
-      "quantity": 2,
-      "device": "mobile",
-      "country": "IN",
-      "ts": "2026-11-07T08:26:31.338Z"
-    }
-  ],
-  "page": 1,
-  "limit": 2,
-  "total": 150002,
-  "totalPages": 75001,
-  "filters": {
-    "type": null,
-    "from": null,
-    "to": null
-  }
-}
-```
-
-Events are sorted by timestamp descending (`ts: -1`), breaking ties by document identifier ascending (`_id: 1`). The internal MongoDB `_id` is excluded from returned documents. Requests past the last page return HTTP 200 with an empty `data` array and accurate pagination metadata.
-
-**Error responses**
-
-All error responses return an error envelope:
-
-```json
-{
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable description"
-  }
-}
-```
-
-| HTTP status | Code | Condition |
-|---|---|---|
-| `400` | `INVALID_EVENT_TYPE` | Unknown, empty, or non-string `type` values |
-| `400` | `INVALID_TIMESTAMP` | Malformed, date-only, missing timezone, or non-string `from`/`to` values |
-| `400` | `INVALID_DATE_RANGE` | `from` timestamp is after `to` timestamp |
-| `400` | `INVALID_PAGE` | Non-integer, non-positive, or non-string `page` values |
-| `400` | `INVALID_LIMIT` | `limit` not in 1–100, non-integer, or non-string |
-| `500` | `QUERY_FAILED` | Database read or cursor failure |
-
-### `GET /api/stats`
-
-Returns live system metrics optimized for low-latency dashboard polling (5-second intervals). Computes total document count, throughput (events/min), and the dominant product category in the active window.
-
-**Query parameters**
-
-- `to` *(optional)*: ISO-8601 timestamp with timezone. Anchors the sliding window (defaults to latest recorded event timestamp).
-- `windowMinutes` *(optional)*: Duration in minutes (1–60, default: 5).
-
-```bash
-curl http://localhost:4000/api/stats
-curl "http://localhost:4000/api/stats?windowMinutes=15"
-```
-
-**Success response (HTTP 200)**
-
+#### `GET /api/stats`
 ```json
 {
   "totalEvents": 150002,
-  "eventsPerMinute": 0.2,
+  "eventsPerMinute": 480.0,
   "window": {
-    "from": "2026-11-07T09:15:00.000Z",
-    "to": "2026-11-07T09:20:00.000Z",
+    "from": "2026-11-12T14:15:00.000Z",
+    "to": "2026-11-12T14:20:00.000Z",
     "durationMinutes": 5
   },
-  "eventsInWindow": 1,
+  "eventsInWindow": 2400,
   "topInsight": {
     "type": "top_category",
     "category": "electronics",
-    "events": 1,
-    "share": 100,
-    "description": "electronics is leading current activity with 1 events (100% of window traffic)"
+    "events": 1020,
+    "share": 42.5,
+    "description": "electronics is leading current activity with 1,020 events (42.5% of window traffic)"
   }
 }
 ```
 
-If no events exist in the selected window, `topInsight` is returned as `null`.
+#### `GET /api/p3/segments`
+```json
+{
+  "data": [
+    { "segment": "no_purchase", "users": 35, "totalSpend": 0, "avgSpend": 0, "avgEvents": 142.3 },
+    { "segment": "low", "users": 137, "totalSpend": 278450.2, "avgSpend": 2032.48, "avgEvents": 215.8 },
+    { "segment": "mid", "users": 127, "totalSpend": 591240.5, "avgSpend": 4655.44, "avgEvents": 290.1 },
+    { "segment": "high", "users": 144, "totalSpend": 1124500.0, "avgSpend": 7809.03, "avgEvents": 348.6 },
+    { "segment": "top", "users": 119, "totalSpend": 1639272.51, "avgSpend": 13775.4, "avgEvents": 412.9 }
+  ]
+}
+```
 
-**Error responses**
+</details>
 
-| HTTP status | Code | Condition |
+---
+
+## 🗃️ Event Data Model & Indexes
+
+Each clickstream document conforms to the following strict schema:
+
+```typescript
+interface ClickstreamEvent {
+  eventId: string;          // Unique UUID event identifier
+  userId: string;           // Consistent user identifier
+  sessionId: string;        // Session identifier
+  type: 'view' | 'add_to_cart' | 'purchase';
+  productId: string;        // Catalog identifier (80 products)
+  category: string;         // 8 categories: electronics, clothing, books, etc.
+  price: number;            // Floating-point unit price
+  quantity: number;         // Positive integer quantity
+  device: 'mobile' | 'desktop' | 'tablet';
+  country: 'IN';            // Geolocation constraint
+  ts: Date;                 // BSON Date timestamp
+}
+```
+
+### Production Index Strategy
+
+| Index Name | Key Pattern | Operational Purpose |
 |---|---|---|
-| `400` | `INVALID_TIMESTAMP` | Malformed, date-only, missing timezone, or non-string `to` value |
-| `400` | `INVALID_WINDOW` | `windowMinutes` not an integer between 1 and 60 |
-| `500` | `QUERY_FAILED` | Database execution failure |
+| `eventId_1` | `{ eventId: 1 }` (unique) | Idempotent deduplication across all ingest paths |
+| `type_ts_1_minus_1` | `{ type: 1, ts: -1 }` | Fast filtering for conversion funnel calculations |
+| `productId_ts_1_minus_1` | `{ productId: 1, ts: -1 }` | Sub-second product-centric activity aggregations |
+| `userId_ts_1_minus_1` | `{ userId: 1, ts: -1 }` | Fast user history and session traversal |
+| `category_ts_1_minus_1` | `{ category: 1, ts: -1 }` | Category-level telemetry and insight queries |
+| `ts_minus_1` | `{ ts: -1 }` | Sliding window bounds and chronologically sorted queries |
 
-### Analytics window behavior
+---
 
-For both analytics endpoints:
+## 🔒 Security & Production Hardening
 
-- Without `to`, the API finds the latest stored event and anchors the window to that timestamp.
-- With `to`, the API validates the supplied ISO-8601 timestamp.
-- The window starts exactly 24 hours before `to`.
-- Both ends of the timestamp range are inclusive.
-- If the collection is empty, the endpoints return empty analytics structures.
+DataForge is hardened for enterprise production environments:
 
-## 🧪 Tests
+- **Rate Limiting:** In-memory sliding window limiter restricting requests to 120 calls/min per client IP. Returns standard RFC 6585 `Retry-After` headers.
+- **Security Headers & CORS:** Enforced via Helmet (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, strict CSP) with restricted cross-origin policies.
+- **Reverse Proxy Support:** Configurable `TRUST_PROXY` supporting boolean flags, specific loopback hops, and CIDR subnets without blind header trust.
+- **Credential Redaction Pipeline (`sanitizeError`):** Automatically redacts MongoDB standard & SRV connection URIs, JWT bearer tokens, API keys, passwords, and sensitive query parameters across all error messages and stack traces.
+- **Zero-Query Request Logging:** Request logging strictly records method, matched Express route pattern, HTTP status, and response latency — query parameters, request bodies, cookies, and auth tokens are never logged.
+- **Graceful Lifecycle Management:** Handles `SIGINT` / `SIGTERM` signals with active connection draining and promotes exit codes to `1` on fatal process race conditions.
+- **Automated Security Scanning:** Continuous static analysis with GitHub CodeQL SAST and weekly automated dependency patching via Dependabot.
 
-The repository includes a comprehensive Node.js native test runner test suite covering:
+---
 
-- ISO-8601 timestamp parsing, invalid timestamp rejection, and URL-encoded timezone offset normalization (`normalizeTimestampString`).
-- Inclusive 24-hour aggregation windows and boundary handling.
-- Event-type counting and purchase-only revenue calculations (`price × quantity`).
-- Deterministic top-product sorting and result limits.
-- UTC hourly bucket generation, conversion rates, and zero-filling.
-- Customer lifetime spend segmentation (P3) across all five approved tiers with reconciliation.
-- Events explorer validation, filter construction, pagination boundaries, unsafe offset protection, and NoSQL injection resistance.
-- Live statistics computation, sliding time windows, events per minute, and top category insight extraction.
-- Router handler execution with in-memory collection fixtures, stable tie-breaking, and database failure recovery.
+## 🧪 Testing & Verification
 
-Run the unit and mocked-router test suite (64 test cases):
+The project maintains comprehensive unit and integration test suites:
 
 ```bash
+# Run all 78 server unit tests
 npm test --prefix server
-```
 
-Run the live MongoDB integration suite (3 suites with baseline-relative verification):
-
-```bash
+# Run isolated integration suites against disposable database
 npm run test:integration --prefix server
+
+# Run frontend production build & typecheck
+npm run build --prefix client
 ```
 
-## ⚙️ System characteristics & limitations
-
-1. **Static / Stale Dataset Handling**: Analytics endpoints anchor sliding windows to the latest recorded event timestamp when `to` is omitted. For static seeded datasets where the latest timestamp is older than 15 minutes, the frontend UI flags the data with a `STATIC DATASET · AS OF <ISO>` badge to distinguish historical snapshots from live traffic.
-2. **Synthetic Session Density**: The synthetic event generator models 562 distinct users and 1,641 sessions across the 150,000 baseline events, averaging ~91 events per session.
-3. **Pagination & Query Scalability (COLLSCAN / Blocking Sort)**: The events explorer (`GET /api/events`) sorts by `{ ts: -1, _id: 1 }`. Because the active index is `{ ts: -1 }` without a compound `_id` tie-breaker, deep pagination offsets can trigger an in-memory blocking sort in MongoDB if result sets exceed memory limits.
-4. **Country Constraint**: Geolocation is strictly constrained to `'IN'` (India) across the schema validator, seeder, ingestion endpoint, and simulator.
-5. **Timestamp Normalization**: `normalizeTimestampString` provides lenient decoding for URL-encoded timezone characters (`+` decoded or preserved as `%2B`) while strictly validating ISO-8601 calendar correctness.
-6. **Database Cleanup Policy (Reference Only)**: Database cleanup commands (such as `db.events.deleteMany({ eventId: /^step2-/ })` or `db.events.deleteMany({ userId: /^u_sim_/ })`) are documented for reference purposes only. **Never execute cleanup commands or reseed against the verified baseline dataset.**
-
-## 🎬 Approved demo script
-
-To demonstrate the full DataForge pipeline from streaming ingestion to live visualization:
-
-1. **Ensure MongoDB is running:**
-   ```bash
-   mongod --dbpath <data-directory>
-   ```
-2. **Start the backend API server:**
-   ```bash
-   npm run dev:server
-   # Verified running at http://localhost:4000
-   ```
-3. **Start the React + Vite frontend dashboard:**
-   ```bash
-   npm run dev:client
-   # Open http://localhost:5173 in browser
-   ```
-4. **Run the streaming event simulator (opt-in):**
-   ```bash
-   npm run simulate -- --run --duration 30
-   ```
-5. **Observe live telemetry:**
-   - Watch the hero statistics panel poll `/api/stats` every 5 seconds.
-   - Observe events/minute and total event counts update in real time.
-   - Inspect top products, conversion funnel, customer lifetime segments, and filtered records in the events explorer.
-
-## 🗺️ Implementation status
-
-All planned milestones are completed and verified:
-- **M1 (P3 Customer Segmentation):** Five-tier spend segmentation pipeline (`/api/p3/segments`), unit and integration tests.
-- **M2 (Frontend Foundation & Hero):** Vexon dark technical UI, canvas particle field, responsive layout, live stats telemetry.
-- **M3 (Analytics & Explorer):** Recharts top products, hourly conversion funnel, spend segmentation, paginated events explorer.
-- **M4 (Simulator & Hardening):** Standalone opt-in event simulator (`server/scripts/simulate.js`), baseline-relative test hardening, full system documentation.
-
-## 🤝 Contributing
-
-Issues and pull requests are welcome. Please include reproduction steps, expected behavior, and test coverage when proposing a change.
-
-Before contributing, check the current implementation boundary and avoid committing secrets, local environment files, generated build output, or database dumps.
+---
 
 ## 📄 License
 
-No `LICENSE` file was present in the supplied archive. Add a license file before presenting the project as open source under a specific license.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
 
-**If DataForge is useful, consider giving the repository a ⭐**
+**Crafted with precision for high-scale e-commerce intelligence.**
 
-[Star DataForge](https://github.com/Gagann-09/DataForge) · [Report an issue](https://github.com/Gagann-09/DataForge/issues) · [Explore the source](https://github.com/Gagann-09/DataForge)
+[Star on GitHub](https://github.com/Gagann-09/DataForge) · [Report Bug](https://github.com/Gagann-09/DataForge/issues) · [Submit Improvement](https://github.com/Gagann-09/DataForge/pulls)
 
 </div>
