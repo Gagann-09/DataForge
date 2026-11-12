@@ -104,7 +104,7 @@ jobs:
           "
 
       - name: Create indexes in isolated test database
-        run: npm run indexes --prefix server
+        run: npm run indexes --prefix server -- create
 
       - name: Seed isolated test database
         run: npm run seed --prefix server
