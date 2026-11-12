@@ -23,6 +23,75 @@ const BATCH_SIZE = 5000; // Insert in batches of 5000 documents
 const MAX_CONSECUTIVE_ZERO_INSERT_BATCHES = 5;
 
 /**
+ * Sanitize a MongoDB URI by redacting username and password credentials.
+ * Handles standard and SRV formats, URL-encoded characters, and edge cases.
+ *
+ * @param {string} uri - Raw connection string
+ * @returns {string} Sanitized connection string safe for logging
+ */
+function sanitizeUri(uri) {
+  if (!uri || typeof uri !== 'string') {
+    return '';
+  }
+  return uri.replace(/(mongodb(?:\+srv)?:\/\/)(?:[^\/\s?]*@)/gi, '$1***:***@');
+}
+
+/**
+ * Sanitize an error or message so credentials cannot appear in terminal or CI output.
+ * Redacts credentials from error messages, stack traces, and strings while preserving diagnostic context.
+ *
+ * @param {Error|string|unknown} error - Error object or string
+ * @returns {Error|string} Sanitized error object or string
+ */
+function sanitizeError(error) {
+  if (!error) return error;
+
+  const redact = (str) => {
+    if (typeof str !== 'string') return str;
+    return str
+      // 1. Redact MongoDB URIs (standard & SRV, including encoded chars and edge cases)
+      .replace(/(mongodb(?:\+srv)?:\/\/)(?:[^\/\s?]*@)/gi, '$1***:***@')
+      // 2. Redact Authorization headers and credentials (Bearer / Basic / Token)
+      .replace(/(Authorization\s*:\s*(?:Bearer|Basic|Token)\s+)[^\s,;]+/gi, '$1***')
+      .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 ***')
+      // 3. Redact common secret-bearing key-value assignments (quoted or unquoted values)
+      .replace(
+        /(\b(?:password|passwd|pwd|access_token|refresh_token|auth_token|api_key|apikey|client_secret|api_secret|secret_key|secret|token)\s*[:=]\s*)(?:(['"])([^\r\n]*?)\2|([^\s&,;'"<>#]+))/gi,
+        (match, prefix, quote) => (quote ? `${prefix}${quote}***${quote}` : `${prefix}***`)
+      )
+      // 4. Redact sensitive query parameters in arbitrary HTTP/HTTPS URLs
+      .replace(
+        /([?&](?:token|access_token|refresh_token|auth_token|api_key|apikey|secret|client_secret|password|pwd)=)([^&\s"'`<>#]+)/gi,
+        '$1***'
+      );
+  };
+
+  if (typeof error === 'string') {
+    return redact(error);
+  }
+
+  if (error instanceof Error) {
+    const cleanError = new Error(redact(error.message));
+    cleanError.name = error.name;
+    if (error.code !== undefined) cleanError.code = error.code;
+    if (error.stack) {
+      cleanError.stack = redact(error.stack);
+    }
+    return cleanError;
+  }
+
+  if (typeof error === 'object') {
+    try {
+      return JSON.parse(redact(JSON.stringify(error)));
+    } catch {
+      return redact(String(error));
+    }
+  }
+
+  return redact(String(error));
+}
+
+/**
  * Seed the database with synthetic clickstream events.
  *
  * Requirements met:
@@ -49,7 +118,7 @@ async function seedDatabase() {
   try {
     console.log('Seed configuration:');
     console.log(`  SEED_COUNT: ${SEED_COUNT}`);
-    console.log(`  MONGODB_URI: ${MONGODB_URI}`);
+    console.log(`  MONGODB_URI: ${sanitizeUri(MONGODB_URI)}`);
     console.log(`  DB_NAME: ${DB_NAME}`);
     console.log(`  COLLECTION_NAME: ${COLLECTION_NAME}`);
     console.log('');
@@ -110,13 +179,15 @@ async function seedDatabase() {
               batchDuplicates++;
             } else {
               batchOtherErrors++;
-              console.error(`    Write error in batch ${batchNum} [code ${writeErr.code}]: ${writeErr.errmsg || writeErr.message}`);
+              const cleanWriteMsg = sanitizeError(writeErr.errmsg || writeErr.message);
+              console.error(`    Write error in batch ${batchNum} [code ${writeErr.code}]: ${cleanWriteMsg}`);
             }
           }
         } else {
           // Fatal non-bulk error (connection dropped, auth failure, etc.)
-          console.error(`Fatal database error during batch ${batchNum}:`, err);
-          throw err;
+          const cleanErr = sanitizeError(err);
+          console.error(`Fatal database error during batch ${batchNum}:`, cleanErr?.message || cleanErr);
+          throw cleanErr;
         }
       }
 
@@ -189,8 +260,9 @@ async function seedDatabase() {
     };
 
   } catch (error) {
-    console.error('Fatal error during seeding:', error);
-    throw error;
+    const cleanError = sanitizeError(error);
+    console.error('Fatal error during seeding:', cleanError.stack || cleanError.message || cleanError);
+    throw cleanError;
   } finally {
     // Always close connection in finally block
     if (client) {
@@ -313,7 +385,8 @@ if (resolve(process.argv[1] || '') === __filename) {
       break;
     case 'seed':
       seedDatabase().then(() => process.exit(0)).catch((err) => {
-        console.error('Seed failed:', err);
+        const cleanErr = sanitizeError(err);
+        console.error('Seed failed:', cleanErr.stack || cleanErr.message || cleanErr);
         process.exit(1);
       });
       break;
@@ -324,4 +397,4 @@ if (resolve(process.argv[1] || '') === __filename) {
 }
 
 // Export for programmatic use
-export { seedDatabase, validateGenerator, SEED_COUNT };
+export { seedDatabase, validateGenerator, SEED_COUNT, sanitizeUri, sanitizeError };

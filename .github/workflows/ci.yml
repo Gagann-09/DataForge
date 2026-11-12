@@ -1,0 +1,131 @@
+name: DataForge CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'm5/**'
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit-and-build:
+    name: Unit Tests & Build (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies (reproducible with lockfiles)
+        run: |
+          npm ci
+          npm ci --prefix server
+          npm ci --prefix client
+
+      - name: Run server unit tests
+        run: npm test --prefix server
+
+      - name: Build client production bundle
+        run: npm run build --prefix client
+
+  integration-tests:
+    name: Integration Tests (Isolated Ephemeral MongoDB)
+    runs-on: ubuntu-latest
+    needs: unit-and-build
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017
+      DB_NAME: dataforge_ci_isolated_test
+      COLLECTION_NAME: events
+      SEED_COUNT: 150005
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix server
+
+      - name: Verify database isolation
+        run: |
+          node -e "
+          const { MongoClient } = require('./server/node_modules/mongodb');
+          async function verifyIsolation() {
+            const client = new MongoClient(process.env.MONGODB_URI);
+            await client.connect();
+            const adminDb = client.db('admin');
+            const dbs = await adminDb.admin().listDatabases();
+            console.log('Available databases in isolated service:', dbs.databases.map(d => d.name));
+            if (dbs.databases.some(d => d.name === 'dataforge')) {
+              console.error('CRITICAL: Production or baseline database name detected! Aborting.');
+              process.exit(1);
+            }
+            console.log('Database isolation verified: test database is completely isolated.');
+            await client.close();
+          }
+          verifyIsolation().catch(err => { console.error(err); process.exit(1); });
+          "
+
+      - name: Create indexes in isolated test database
+        run: npm run indexes --prefix server
+
+      - name: Seed isolated test database
+        run: npm run seed --prefix server
+
+      - name: Verify isolated document count before test run
+        run: |
+          node -e "
+          const { MongoClient } = require('./server/node_modules/mongodb');
+          async function checkCount() {
+            const client = new MongoClient(process.env.MONGODB_URI);
+            await client.connect();
+            const count = await client.db(process.env.DB_NAME).collection(process.env.COLLECTION_NAME).countDocuments();
+            console.log('Isolated test document count:', count);
+            if (count < 150000) {
+              console.error('Expected at least 150000 seeded documents in test database, found:', count);
+              process.exit(1);
+            }
+            await client.close();
+          }
+          checkCount().catch(err => { console.error(err); process.exit(1); });
+          "
+
+      - name: Run server integration tests
+        run: npm run test:integration --prefix server
